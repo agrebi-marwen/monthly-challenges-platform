@@ -1,0 +1,267 @@
+// 1. Configure & Initialize Supabase
+const SUPABASE_URL = "https://sahcbybmqhnctxeycfrp.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_qVk15PitIx9N_9L22TknAA_gFJQraiD";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// DOM Elements
+const navUsername = document.getElementById('nav-username');
+const statRank = document.getElementById('stat-rank');
+const statPoints = document.getElementById('stat-points');
+const statSolved = document.getElementById('stat-solved');
+const challengesList = document.getElementById('challenges-list');
+const logoutBtn = document.getElementById('logout-btn');
+
+// Modal Elements
+const leaderboardModal = document.getElementById('leaderboard-modal');
+const settingsModal = document.getElementById('settings-modal');
+const openLeaderboardBtn = document.getElementById('open-leaderboard');
+const openSettingsBtn = document.getElementById('open-settings');
+const closeLeaderboardBtn = document.getElementById('close-leaderboard');
+const closeSettingsBtn = document.getElementById('close-settings');
+
+// Settings Form Elements
+const settingsForm = document.getElementById('settings-form');
+const settingsUsernameInput = document.getElementById('settings-username');
+const settingsPasswordInput = document.getElementById('settings-password');
+const settingsMessage = document.getElementById('settings-message');
+
+let currentUser = null;
+
+// ==========================================
+// 1. AUTHENTICATION & PROFILE FLOW
+// ==========================================
+async function initDashboard() {
+    setupEventListeners();
+
+    const { data: { session } } = await supabaseClient.auth.getSession();
+
+    if (!session || !session.user) {
+        window.location.href = "../Account/login.html";
+        return;
+    }
+
+    currentUser = session.user;
+    
+    await fetchUserProfile();
+    await fetchChallenges();
+}
+
+async function fetchUserProfile() {
+    const { data: profile, error } = await supabaseClient
+        .from('profiles')
+        .select('username, total_points')
+        .eq('id', currentUser.id)
+        .single();
+
+    if (profile && !error) {
+        const points = profile.total_points ?? 0;
+
+        navUsername.textContent = `Traveler: ${profile.username}`;
+        statPoints.textContent = `${points} EP`;
+        settingsUsernameInput.value = profile.username;
+
+        if (points >= 1000) {
+            statRank.textContent = "Grand Time Lord";
+        } else if (points >= 500) {
+            statRank.textContent = "Chronos Engineer";
+        } else {
+            statRank.textContent = "Novice Traveler";
+        }
+        // === Count approved submissions (solved anomalies) by this user ===
+        const { count, error: countError } = await supabaseClient
+            .from('submissions') 
+            .select('*', { count: 'exact', head: true })
+            .eq('user_id', currentUser.id)
+            .eq('status', 'APPROVED'); 
+
+        if (!countError) {
+            statSolved.textContent = count ?? 0;
+        } else {
+            console.error("Failed to count submissions:", countError);
+            statSolved.textContent = "0";
+        }
+    }
+}
+
+// ==========================================
+// 2. DYNAMIC CHALLENGES FLOW
+// ==========================================
+async function fetchChallenges() {
+    challengesList.innerHTML = `<div class="loading-state">Scanning temporal streams...</div>`;
+
+    const { data: challenges, error } = await supabaseClient
+        .from('challenges')
+        .select('id, title, instructions, month_year, points_worth, is_active')
+        .eq('is_active', true) 
+        .order('created_at', { ascending: false });
+
+    if (error) {
+        challengesList.innerHTML = `<div class="loading-state">Temporal scanner offline: ${error.message}</div>`;
+        return;
+    }
+
+    if (!challenges || challenges.length === 0) {
+        challengesList.innerHTML = `<div class="loading-state">No timeline anomalies detected at this moment. Secure zone.</div>`;
+        return;
+    }
+
+    challengesList.innerHTML = ""; 
+
+    challenges.forEach(challenge => {
+        const card = document.createElement('div');
+        card.classList.add('challenge-card');
+
+        card.addEventListener('click', () => {
+            window.location.href = `submit.html?id=${challenge.id}`;
+        });
+
+        card.innerHTML = `
+            <div class="card-top">
+                <span class="card-badge">${challenge.month_year || 'Epoch'}</span>
+                <span class="card-points">+${challenge.points_worth ?? 100} EP</span>
+            </div>
+            <h3>${challenge.title}</h3>
+            <span class="enter-link">Initiate Synchronization →</span>
+        `;
+        challengesList.appendChild(card);
+    });
+}
+
+// ==========================================
+// 3. LEADERBOARD & SETTINGS MODALS FLOW
+// ==========================================
+async function fetchLeaderboard() {
+    const tbody = document.getElementById('leaderboard-tbody');
+    tbody.innerHTML = `<tr><td colspan="3" class="modal-loading">Scanning timelines...</td></tr>`;
+
+    const { data: rankings, error } = await supabaseClient
+        .from('profiles')
+        .select('username, total_points')
+        .order('total_points', { ascending: false })
+        .limit(10);
+
+    if (error) {
+        tbody.innerHTML = `<tr><td colspan="3" class="modal-loading">Failed to read registry: ${error.message}</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = "";
+    rankings.forEach((profile, index) => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td><strong>#${index + 1}</strong></td>
+            <td>${profile.username}</td>
+            <td>${profile.total_points ?? 0} EP</td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+settingsForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    settingsMessage.textContent = "Updating protocol...";
+    settingsMessage.style.color = "white";
+
+    const newUsername = settingsUsernameInput.value.trim();
+    const newPassword = settingsPasswordInput.value;
+
+    const { error: profileError } = await supabaseClient
+        .from('profiles')
+        .update({ username: newUsername })
+        .eq('id', currentUser.id);
+
+    if (profileError) {
+        settingsMessage.textContent = "Error: " + profileError.message;
+        settingsMessage.style.color = "red";
+        return;
+    }
+
+    if (newPassword.trim() !== "") {
+        const { error: authError } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+
+        if (authError) {
+            settingsMessage.textContent = "Username saved, but password failed: " + authError.message;
+            settingsMessage.style.color = "red";
+            return;
+        }
+    }
+
+    settingsMessage.textContent = "Identity stabilized successfully!";
+    settingsMessage.style.color = "green";
+    fetchUserProfile(); 
+    setTimeout(() => {
+        settingsModal.classList.remove('active');
+        settingsMessage.textContent = "";
+        settingsPasswordInput.value = "";
+    }, 1500);
+});
+
+// ==========================================
+// 4. GENERAL EVENTS
+// ==========================================
+function setupEventListeners() {
+    openLeaderboardBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        leaderboardModal.classList.add('active');
+        fetchLeaderboard();
+    });
+
+    openSettingsBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        settingsModal.classList.add('active');
+    });
+
+    closeLeaderboardBtn.addEventListener('click', () => leaderboardModal.classList.remove('active'));
+    closeSettingsBtn.addEventListener('click', () => settingsModal.classList.remove('active'));
+
+    window.addEventListener('click', (e) => {
+        if (e.target === leaderboardModal) leaderboardModal.classList.remove('active');
+        if (e.target === settingsModal) settingsModal.classList.remove('active');
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+        await supabaseClient.auth.signOut();
+        window.location.href = "../index.html";
+    });
+
+    // Stealth Trigger: Click the STATS RANK text ("Novice Traveler") 5 times 
+    // BUT only while holding down the "Shift" key! 
+    statRank.addEventListener('click', (e) => {
+        // Only count the click if the Shift key is actively being held down
+        if (e.shiftKey) {
+            clickTracker++;
+            
+            clearTimeout(clickTimeout);
+            clickTimeout = setTimeout(() => {
+                clickTracker = 0;
+            }, 1500); // Must complete 5 clicks within 1.5 seconds
+
+            if (clickTracker === 5) {
+                clickTracker = 0;
+                triggerStealthRedirect();
+            }
+        }
+    });
+}
+
+// ==========================================
+// 5. THE STEALTH GATEWAY (UNEXPOSED)
+// ==========================================
+let clickTracker = 0;
+let clickTimeout;
+
+// This is the Base64 encoded string of "../Admin/admin.html"
+// Anyone inspecting your JS file will only see a random string of characters!
+const ENCODED_ROUTE = "Li4vQWRtaW4vYWRtaW4uaHRtbA=="; 
+
+function triggerStealthRedirect() {
+    // Decode the path dynamically in memory right before redirecting
+    const targetPath = atob(ENCODED_ROUTE);
+    window.location.href = targetPath;
+}
+
+// Stealth Trigger registered in setupEventListeners()
+
+document.addEventListener('DOMContentLoaded', initDashboard);

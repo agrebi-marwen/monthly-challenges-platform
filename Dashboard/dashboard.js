@@ -51,44 +51,76 @@ async function initDashboard() {
     await fetchUserProfile();
     await fetchChallenges();
 }
-
 async function fetchUserProfile() {
-    const { data: profile, error } = await supabaseClient
-        .from('profiles')
-        .select('username, total_points')
-        .eq('id', currentUser.id)
-        .single();
+  const { data: profile, error } = await supabaseClient
+    .from('profiles')
+    .select('username, total_points')
+    .eq('id', currentUser.id)
+    .maybeSingle(); // <-- important: returns null instead of throwing for "no rows"
 
-    if (profile && !error) {
-        const points = profile.total_points ?? 0;
+  // If no row exists for this user, create it
+  if (!profile && !error) {
+    const { error: insertError } = await supabaseClient
+      .from('profiles')
+      .insert({
+        id: currentUser.id,
+        username: 'Traveler',
+        total_points: 0,
+      });
 
-        navUsername.textContent = `Traveler: ${profile.username}`;
-        statPoints.textContent = `${points} EP`;
-        settingsUsernameInput.value = profile.username;
-
-        if (points >= 1000) {
-            statRank.textContent = "Grand Time Lord";
-        } else if (points >= 500) {
-            statRank.textContent = "Chronos Engineer";
-        } else {
-            statRank.textContent = "Novice Traveler";
-        }
-        // === Count approved submissions (solved anomalies) by this user ===
-        const { count, error: countError } = await supabaseClient
-            .from('submissions') 
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', currentUser.id)
-            .eq('status', 'APPROVED'); 
-
-        if (!countError) {
-            statSolved.textContent = count ?? 0;
-        } else {
-            console.error("Failed to count submissions:", countError);
-            statSolved.textContent = "0";
-        }
+    if (insertError) {
+      console.error('Profile insert failed:', insertError);
+      navUsername.textContent = 'Traveler';
+      statPoints.textContent = '0 EP';
+      statSolved.textContent = '0';
+      return;
     }
-}
 
+    // refetch after insert
+    const { data: newProfile } = await supabaseClient
+      .from('profiles')
+      .select('username, total_points')
+      .eq('id', currentUser.id)
+      .single();
+
+    currentUser = currentUser; // no-op, just keeping flow readable
+    profile = newProfile;
+  } else if (error) {
+    console.error('Profile load failed:', error);
+    navUsername.textContent = 'Traveler';
+    statPoints.textContent = '0 EP';
+    statSolved.textContent = '0';
+    return;
+  }
+
+  // Now update UI from `profile`
+  const points = profile.total_points ?? 0;
+
+  navUsername.textContent = `Traveler: ${profile.username}`;
+  statPoints.textContent = `${points} EP`;
+  settingsUsernameInput.value = profile.username;
+
+  if (points >= 1000) {
+    statRank.textContent = "Grand Time Lord";
+  } else if (points >= 500) {
+    statRank.textContent = "Chronos Engineer";
+  } else {
+    statRank.textContent = "Novice Traveler";
+  }
+
+  const { count, error: countError } = await supabaseClient
+    .from('submissions')
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', currentUser.id)
+    .eq('status', 'APPROVED');
+
+  if (!countError) {
+    statSolved.textContent = count ?? 0;
+  } else {
+    console.error("Failed to count submissions:", countError);
+    statSolved.textContent = "0";
+  }
+}
 // ==========================================
 // 2. DYNAMIC CHALLENGES FLOW
 // ==========================================

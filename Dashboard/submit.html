@@ -48,7 +48,13 @@
         
         <form id="submission-form">
           <label for="submission-url">Repository URL</label>
-          <input type="url" id="submission-url" placeholder="https://github.com/... " required>
+          <input 
+            type="url" 
+            id="submission-url" 
+            placeholder="https://github.com/username/repository" 
+            pattern="^https?:\/\/(www\.)?(github\.com|gitlab\.com)\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+.*$" 
+            title="Please enter a valid GitHub or GitLab repository URL (e.g., https://github.com/username/repository)" 
+            required>
           <button type="submit" id="submit-btn">Initialize Patch</button>
         </form>
         <div id="submission-message"></div>

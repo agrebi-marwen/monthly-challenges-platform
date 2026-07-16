@@ -71,7 +71,18 @@ submissionForm.addEventListener('submit', async (e) => {
 
     const url = submissionUrl.value.trim();
 
-    // Insert submission record into the 'submissions' table
+    // 1. Regex validation for GitHub and GitLab
+    // Matches: http(s)://(www.)github.com/username/repository or gitlab.com/username/repository
+    const gitUrlRegex = /^https?:\/\/(www\.)?(github\.com|gitlab\.com)\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+/i;
+
+    if (!gitUrlRegex.test(url)) {
+        submissionMessage.textContent = "Invalid URL. Please provide a valid GitHub or GitLab repository link.";
+        submissionMessage.style.color = "#ef4444";
+        submitBtn.disabled = false;
+        return; // Halt execution and don't insert into database
+    }
+
+    // 2. Insert submission record into the 'submissions' table
     const { error } = await supabaseClient
         .from('submissions')
         .insert([
@@ -80,7 +91,7 @@ submissionForm.addEventListener('submit', async (e) => {
                 challenge_id: challengeId,
                 submission_url: url,
                 status: 'PENDING',
-                submitted_at: new Date().toISOString() // Ensure timestamp matches schema formatting
+                submitted_at: new Date().toISOString()
             }
         ]);
 
@@ -101,5 +112,4 @@ submissionForm.addEventListener('submit', async (e) => {
         }, 3000);
     }
 });
-
 document.addEventListener('DOMContentLoaded', initSubmitPage);

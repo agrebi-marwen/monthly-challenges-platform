@@ -4,7 +4,19 @@ const SUPABASE_ANON_KEY = "sb_publishable_qVk15PitIx9N_9L22TknAA_gFJQraiD";
 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// SECURITY SETTINGS 
+// Escape untrusted values before interpolating into innerHTML (prevents XSS)
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+// Only allow http(s) URLs in href; otherwise render an inert link (blocks javascript: etc.)
+function safeUrl(value) {
+    const url = String(value ?? '');
+    return /^https?:\/\//i.test(url) ? url : '#';
+}
+
+// SECURITY SETTINGS
 const ADMIN_SECRET_KEY = "BAGABOZ"; 
 let isRoleAuthorized = false;
 let isPasswordAuthorized = false;
@@ -179,22 +191,22 @@ function renderSubmissions(submissions, challengeLookup) {
         card.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start;">
                 <div>
-                    <h3 style="color: #ffffff; margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem;">${challengeTitle}</h3>
-                    <p style="color: #6b7280; font-size: 0.75rem; margin: 4px 0 0 0;">Traveler: <strong>${username}</strong> • ${date}</p>
+                    <h3 style="color: #ffffff; margin: 0; font-family: 'Space Grotesk', sans-serif; font-size: 1.1rem;">${escapeHtml(challengeTitle)}</h3>
+                    <p style="color: #6b7280; font-size: 0.75rem; margin: 4px 0 0 0;">Traveler: <strong>${escapeHtml(username)}</strong> • ${escapeHtml(date)}</p>
                 </div>
                 <span style="font-size: 0.75rem; color: #f59e0b; background: rgba(245, 158, 11, 0.1); padding: 3px 8px; border: 1px solid rgba(245,158,11,0.2); border-radius: 6px; font-weight: 700;">PENDING</span>
             </div>
             
             <div style="background: rgba(0,0,0,0.2); padding: 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.02);">
                 <span style="color: #6b7280; font-size: 0.75rem; display:block; margin-bottom:2px;">Repository Payload URL:</span>
-                <a href="${sub.submission_url}" target="_blank" style="color: #f97316; font-size: 0.85rem; word-break: break-all; text-decoration: none;">
-                    ${sub.submission_url} ↗
+                <a href="${escapeHtml(safeUrl(sub.submission_url))}" target="_blank" rel="noopener noreferrer" style="color: #f97316; font-size: 0.85rem; word-break: break-all; text-decoration: none;">
+                    ${escapeHtml(sub.submission_url)} ↗
                 </a>
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 5px;">
-                <button class="action-btn btn-approve" data-id="${sub.id}" data-action="APPROVED" style="flex: 1; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; cursor: pointer; font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.85rem;">Approve Patch</button>
-                <button class="action-btn btn-reject" data-id="${sub.id}" data-action="REJECTED" style="flex: 1; padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 6px; cursor: pointer; font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.85rem;">Reject Patch</button>
+                <button class="action-btn btn-approve" data-id="${escapeHtml(sub.id)}" data-action="APPROVED" style="flex: 1; padding: 10px; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; border-radius: 6px; cursor: pointer; font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.85rem;">Approve Patch</button>
+                <button class="action-btn btn-reject" data-id="${escapeHtml(sub.id)}" data-action="REJECTED" style="flex: 1; padding: 10px; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; border-radius: 6px; cursor: pointer; font-family: 'Space Grotesk'; font-weight: 600; font-size: 0.85rem;">Reject Patch</button>
             </div>
         `;
         submissionsList.appendChild(card);

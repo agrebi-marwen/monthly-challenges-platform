@@ -11,7 +11,11 @@ const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   }
 });
 
-
+// Escape untrusted values before interpolating into innerHTML (prevents XSS)
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
 
 //fetch last three challenges from database
 async function fetchLastThreeChallenges() {
@@ -46,20 +50,20 @@ async function fetchLastThreeChallenges() {
             ">
                 <div>
                     <span style="font-size: 0.75rem; color: #f97316; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: 4px;">
-                        ${ch.month_year || "Active Epoch"}
+                        ${escapeHtml(ch.month_year || "Active Epoch")}
                     </span>
                     <h3 style="color: #ffffff; margin: 0 0 8px 0; font-family: 'Space Grotesk', sans-serif;">
-                        ${ch.title}
+                        ${escapeHtml(ch.title)}
                     </h3>
                     <p style="color: #9ca3af; font-size: 0.85rem; margin: 0; line-height: 1.4;">
-                        ${ch.instructions ? (ch.instructions.substring(0, 100) + (ch.instructions.length > 100 ? '...' : '')) : ''}
+                        ${ch.instructions ? escapeHtml(ch.instructions.substring(0, 100) + (ch.instructions.length > 100 ? '...' : '')) : ''}
                     </p>
                 </div>
                 <div style="text-align: right; min-width: 100px;">
                     <span style="display: block; color: #10b981; font-weight: bold; font-size: 1.1rem; margin-bottom: 8px;">
-                        +${ch.points_worth} EP
+                        +${escapeHtml(ch.points_worth)} EP
                     </span>
-                    <a href="Dashboard/dashboard.html?target=${ch.id}" class="action-btn" style="
+                    <a href="Dashboard/dashboard.html?target=${escapeHtml(encodeURIComponent(ch.id))}" class="action-btn" style="
                         display: inline-block;
                         padding: 8px 12px;
                         background: #f97316;
@@ -76,7 +80,7 @@ async function fetchLastThreeChallenges() {
         `).join('');
     } catch (err) {
         console.error("❌ Challenges Error:", err);
-        container.innerHTML = `<p style="color: #ef4444; font-size: 0.9rem;">Error accessing temporal stream: ${err.message}</p>`;
+        container.innerHTML = `<p style="color: #ef4444; font-size: 0.9rem;">Error accessing temporal stream: ${escapeHtml(err.message)}</p>`;
     }
 }
 
@@ -109,8 +113,8 @@ async function loadPublicLeaderboard() {
             return `
                 <tr>
                     <td class="col-rank"><strong>${rankBadge}</strong></td>
-                    <td class="col-name">${profile.username || "Anonymous Traveler"}</td>
-                    <td class="col-points">${profile.total_points ?? 0} EP</td>
+                    <td class="col-name">${escapeHtml(profile.username || "Anonymous Traveler")}</td>
+                    <td class="col-points">${escapeHtml(profile.total_points ?? 0)} EP</td>
                 </tr>
             `;
         }).join('');
@@ -140,7 +144,7 @@ supabaseClient.auth.onAuthStateChange(async (event, session) => {
                 authBtn.outerHTML = `
                     <div id="user-nav-container" style="display: flex; align-items: center; gap: 15px;">
                         <a href="Dashboard/dashboard.html" style="font-weight: bold; font-size: 14px; color: #fff; text-decoration: none; border-bottom: 1px dashed #f97316; padding-bottom: 2px;">
-                            🕒 ${username} (${points} EP)
+                            🕒 ${escapeHtml(username)} (${escapeHtml(points)} EP)
                         </a>
                         <button id="logout-btn" style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #ef4444; padding: 6px 14px; border-radius: 12px; cursor: pointer; font-weight: 600; font-size: 0.8rem;">Log Out</button>
                     </div>

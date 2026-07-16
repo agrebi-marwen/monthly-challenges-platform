@@ -3,6 +3,12 @@ const SUPABASE_URL = "https://sahcbybmqhnctxeycfrp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qVk15PitIx9N_9L22TknAA_gFJQraiD";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Escape untrusted values before interpolating into innerHTML (prevents XSS)
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 // DOM Elements
 const navUsername = document.getElementById('nav-username');
 const statRank = document.getElementById('stat-rank');
@@ -96,7 +102,7 @@ async function fetchChallenges() {
         .order('created_at', { ascending: false });
 
     if (error) {
-        challengesList.innerHTML = `<div class="loading-state">Temporal scanner offline: ${error.message}</div>`;
+        challengesList.innerHTML = `<div class="loading-state">Temporal scanner offline: ${escapeHtml(error.message)}</div>`;
         return;
     }
 
@@ -117,10 +123,10 @@ async function fetchChallenges() {
 
         card.innerHTML = `
             <div class="card-top">
-                <span class="card-badge">${challenge.month_year || 'Epoch'}</span>
-                <span class="card-points">+${challenge.points_worth ?? 100} EP</span>
+                <span class="card-badge">${escapeHtml(challenge.month_year || 'Epoch')}</span>
+                <span class="card-points">+${escapeHtml(challenge.points_worth ?? 100)} EP</span>
             </div>
-            <h3>${challenge.title}</h3>
+            <h3>${escapeHtml(challenge.title)}</h3>
             <span class="enter-link">Initiate Synchronization →</span>
         `;
         challengesList.appendChild(card);
@@ -141,7 +147,7 @@ async function fetchLeaderboard() {
         .limit(10);
 
     if (error) {
-        tbody.innerHTML = `<tr><td colspan="3" class="modal-loading">Failed to read registry: ${error.message}</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="3" class="modal-loading">Failed to read registry: ${escapeHtml(error.message)}</td></tr>`;
         return;
     }
 
@@ -150,8 +156,8 @@ async function fetchLeaderboard() {
         const row = document.createElement('tr');
         row.innerHTML = `
             <td><strong>#${index + 1}</strong></td>
-            <td>${profile.username}</td>
-            <td>${profile.total_points ?? 0} EP</td>
+            <td>${escapeHtml(profile.username)}</td>
+            <td>${escapeHtml(profile.total_points ?? 0)} EP</td>
         `;
         tbody.appendChild(row);
     });

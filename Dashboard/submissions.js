@@ -3,6 +3,12 @@ const SUPABASE_URL = "https://sahcbybmqhnctxeycfrp.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_qVk15PitIx9N_9L22TknAA_gFJQraiD"; 
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// Escape untrusted values before interpolating into innerHTML (prevents XSS)
+function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, c =>
+        ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
 const logsTableBody = document.getElementById('logs-table-body');
 let currentUser = null;
 
@@ -42,7 +48,7 @@ async function fetchUserSubmissions() {
         logsTableBody.innerHTML = `
             <tr>
                 <td colspan="4" class="table-error">
-                    Telemetry Fetch Failed: ${error.message}
+                    Telemetry Fetch Failed: ${escapeHtml(error.message)}
                 </td>
             </tr>`;
         return;
@@ -73,15 +79,15 @@ async function fetchUserSubmissions() {
 
         const row = document.createElement('tr');
         row.innerHTML = `
-            <td class="col-time">${timestamp}</td>
-            <td class="col-title">${challengeTitle}</td>
+            <td class="col-time">${escapeHtml(timestamp)}</td>
+            <td class="col-title">${escapeHtml(challengeTitle)}</td>
             <td class="col-url">
-                <a href="${targetUrl.startsWith('http') ? targetUrl : '#'}" target="_blank" class="table-link">
-                    ${targetUrl}
+                <a href="${escapeHtml(targetUrl.startsWith('http') ? targetUrl : '#')}" target="_blank" rel="noopener noreferrer" class="table-link">
+                    ${escapeHtml(targetUrl)}
                 </a>
             </td>
             <td class="col-status">
-                <span class="table-status-badge ${statusClass}">${cleanStatus}</span>
+                <span class="table-status-badge ${escapeHtml(statusClass)}">${escapeHtml(cleanStatus)}</span>
             </td>
         `;
         logsTableBody.appendChild(row);

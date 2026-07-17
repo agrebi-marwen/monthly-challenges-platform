@@ -51,6 +51,7 @@ Locate the initialization blocks inside your JavaScript files (e.g., dashboard.j
 JavaScript
 const SUPABASE_URL = "YOUR_SUPABASE_URL";
 const SUPABASE_ANON_KEY = "YOUR_ANON_KEY";
+
 2. Run Locally
 Spin up a local server to test the temporal streams:
 

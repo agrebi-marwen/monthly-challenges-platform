@@ -18,7 +18,7 @@ function safeUrl(value) {
 }
 
 // SECURITY SETTINGS
-const ADMIN_SECRET_KEY = "BAGABOZ"; 
+const ADMIN_SECRET_KEY = ""; 
 let isRoleAuthorized = false;
 let isPasswordAuthorized = false;
 

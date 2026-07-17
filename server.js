@@ -1,6 +1,6 @@
 //API SETTINGS
 const SUPABASE_URL = "https://sahcbybmqhnctxeycfrp.supabase.co";
-const SUPABASE_ANON_KEY = "sb_publishable_qVk15PitIx9N_9L22TknAA_gFJQraiD";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNhaGNieWJtcWhuY3R4ZXljZnJwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM1MTY0MjksImV4cCI6MjA5OTA5MjQyOX0.EQ27PPE9nd40e9g5GJhZh3CJLN12jKZ6byxSkFZmkjk";
  
 //API CONNECTION
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
@@ -95,7 +95,7 @@ async function loadPublicLeaderboard() {
             .from('profiles')
             .select('username, total_points')
             .order('total_points', { ascending: false })
-            .limit(10);
+            .limit(3);
 
         if (error) throw error;
 
@@ -127,6 +127,7 @@ async function loadPublicLeaderboard() {
 //login state change
 supabaseClient.auth.onAuthStateChange(async (event, session) => {
     const authBtn = document.getElementById('auth-btn');
+    
     const heroCtaBtn = document.getElementById('time-rift-btn'); 
 
     if (session && session.user) {
@@ -166,6 +167,42 @@ async function handleLogout() {
     await supabaseClient.auth.signOut();
     window.location.reload(); 
 }
+
+
+// Prevent right-click context menu
+document.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+});
+
+
+// Block common developer tool keyboard shortcuts
+document.addEventListener('keydown', (event) => {
+    // 1. Block F12
+    if (event.key === 'F12') {
+        event.preventDefault();
+    }
+    
+    // 2. Block Ctrl+Shift+I (Windows/Linux) or Cmd+Opt+I (Mac)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'I') {
+        event.preventDefault();
+    }
+
+    // 3. Block Ctrl+Shift+J / Cmd+Opt+J (Opens Console directly)
+    if ((event.ctrlKey || event.metaKey) && event.shiftKey && event.key === 'J') {
+        event.preventDefault();
+    }
+
+    // 4. Block Ctrl+U / Cmd+Opt+U (View Page Source)
+    if ((event.ctrlKey || event.metaKey) && event.key === 'u') {
+        event.preventDefault();
+    }
+});
+
+// Instantly pauses execution if DevTools is open
+setInterval(() => {
+    debugger;
+}, 100);
+
 
 document.addEventListener('DOMContentLoaded', () => {
     loadPublicLeaderboard();

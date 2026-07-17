@@ -291,8 +291,6 @@ function setupEventListeners() {
 let clickTracker = 0;
 let clickTimeout;
 
-// This is the Base64 encoded string of "../Admin/admin.html"
-// Anyone inspecting your JS file will only see a random string of characters!
 const ENCODED_ROUTE = "Li4vQWRtaW4vYWRtaW4uaHRtbA=="; 
 
 function triggerStealthRedirect() {
